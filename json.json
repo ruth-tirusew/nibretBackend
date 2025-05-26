@@ -1,0 +1,84 @@
+{
+    "id": "c081ce0b-804e-4b65-a2d7-c91ae441359c",
+    "location": {
+        "id": "643268f8-668a-42ab-bb78-f6e20afa6696",
+        "name": "Bole",
+        "tr_name": null,
+        "description": "",
+        "tr_description": null,
+        "created_at": "2025-04-15T09:06:04.663418Z",
+        "updated_at": "2025-04-15T09:06:04.663440Z",
+        "longitude": 8.9970793,
+        "latitude": 38.7724334
+    },
+    "pictures": [
+        {
+            "id": "b7482388-ffcd-43a5-b34e-44650c7d20fa",
+            "property": "Apartment",
+            "is_cover": false,
+            "image_url": "https://res.cloudinary.com/dnqkrebrb/image/upload/v1744707841/aqmada/qh0kxtyq0hr9uvvenk5q.jpg",
+            "blur_hash": "LCF$31D%emt5~UNIbxnNIAt6enIV"
+        },
+        {
+            "id": "da2d2909-7ee7-4dd0-9e90-605c2670e8ca",
+            "property": "Apartment",
+            "is_cover": false,
+            "image_url": "https://res.cloudinary.com/dnqkrebrb/image/upload/v1744707857/aqmada/pztzwxxdk6eal2eagc57.jpg",
+            "blur_hash": "LIGIDiH?9F?b~qfkITM|Ndo#s:IA"
+        },
+        {
+            "id": "3c334b17-1e49-48c6-b23f-729d79ad3f60",
+            "property": "Apartment",
+            "is_cover": false,
+            "image_url": "https://res.cloudinary.com/dnqkrebrb/image/upload/v1744707857/aqmada/xjxyqi62vt3ibf4qyfgo.jpg",
+            "blur_hash": "LEDvJ{IU00xu?H%KR*o30L%M%2Rk"
+        },
+        {
+            "id": "d131dd86-8349-461b-a926-26cd595d810c",
+            "property": "Apartment",
+            "is_cover": false,
+            "image_url": "https://res.cloudinary.com/dnqkrebrb/image/upload/v1744707857/aqmada/ck01e6mqmkjf6xp5nwo3.jpg",
+            "blur_hash": "LDE{CB?aMwnh.7t6-=R+0LD$r=V@"
+        },
+        {
+            "id": "647f48cb-7c85-4379-b574-52ffa6e73f99",
+            "property": "Apartment",
+            "is_cover": false,
+            "image_url": "https://res.cloudinary.com/dnqkrebrb/image/upload/v1744707857/aqmada/me8aaeiqcuctkyakumhl.jpg",
+            "blur_hash": "LED]VgAL0MtTyDR:$yxaDis*xZIp"
+        },
+        {
+            "id": "7a59ac79-06e5-47f5-8f7b-e12ad9583513",
+            "property": "Apartment",
+            "is_cover": false,
+            "image_url": "https://res.cloudinary.com/dnqkrebrb/image/upload/v1744707857/aqmada/jmxwdn7ghh6zzucv7ns1.jpg",
+            "blur_hash": "LDGIGpDiDiS1~VM{o#$yDhxuxvRO"
+        }
+    ],
+    "loaner_detail": [],
+    "is_wishlisted": false,
+    "num_of_wishlist": null,
+    "loan_amount": 0,
+    "premium": false,
+    "name": "Apartment",
+    "tr_name": null,
+    "description": "2 bed 2 bath on a G+12 building equipped with backup Generators, elevators and an underground water supply. The apartment are available furnished",
+    "tr_description": null,
+    "created_at": "2025-04-15T09:06:04.757035Z",
+    "updated_at": "2025-04-15T09:06:04.757050Z",
+    "price": 100000.0,
+    "bedroom": 2,
+    "bathroom": 2,
+    "area": 110.0,
+    "currency": "ETB",
+    "discount": 0.0,
+    "sold_out": false,
+    "is_store": false,
+    "type": "Apartment",
+    "move_in_date": null,
+    "rental": true,
+    "furnished": true,
+    "impression_count": null,
+    "owner": null,
+    "created_by": null
+}

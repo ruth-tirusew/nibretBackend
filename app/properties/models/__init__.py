@@ -1,0 +1,1 @@
+from app.properties.models.property import *
