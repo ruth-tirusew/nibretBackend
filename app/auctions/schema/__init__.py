@@ -1,0 +1,1 @@
+from app.auctions.schema.schema import *

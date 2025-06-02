@@ -1,76 +1,80 @@
 from datetime import datetime
-from typing import Optional
-
-from bson.objectid import ObjectId
-from pymongo.database import Database
+from typing import Optional, List
+from sqlalchemy.orm import Session
+from sqlalchemy import func, select, and_
+from sqlalchemy.orm import Session, joinedload, Query
 
 from app.auctions.models.auction import *
-from app.properties.utils.blurhash import generate_blurhash
-
-
+from app.commons.models import LocationBase
+from app.commons.schema import  *
+from app.commons.utils.pagination_result import PaginatedResult
+from app.commons.utils import generate_blurhash, get_paginated_query
+from app.auctions.schema import Auctions, AuctionImages
+from app.auctions.models import Auction
 
 class AuctionRepository:
-    def __init__(self, database: Database):
-        self.database = database
+    def __init__(self, db_session: Session):
+        self.db_session = db_session
 
-    def register_auction(self,auction: Auction) -> Optional[Auction]:
-        auction_saved = auction.model_dump()
-        # auction_saved['id'] = str(ObjectId())
-        images = []
-        pictures=auction.pictures
-        for picture in pictures:
-            picture.blur_hash = generate_blurhash(picture.image_url)
-            images.append(picture.model_dump())
+    def register_auction(self, auction: Auctions):
+        try:
+            if auction.location:
+                location = Location(**auction.location.dict())
+                self.db_session.add(location)
+                self.db_session.flush()
+            else:
+                location = None
 
-        auction_saved['pictures']=images
-        self.database["auctions"].insert_one(auction_saved)
-        
-        return auction_saved
+            auction_data = auction.dict(exclude={"pictures", "location"})
+            db_auction = Auctions(**auction_data)
+            
+            if location:
+                db_auction.location = location
 
-    def get_auction_by_id(self, id: str) -> Optional[Auction]:
-        auction = self.database["auctions"].find_one(
-            {
-                "_id": ObjectId(id),
-            }
-        )
-        if auction:
-            return Auction.model_validate(auction)
-    
-    def update_auction(self, id:str,auction:Auction)->Optional[Auction]:
-        auction_saved = auction.model_dump()
-        images = []
-        pictures=auction_saved['pictures']
-        for picture in pictures:
-            picture['blur_hash'] = generate_blurhash(picture['image_url'])
-            images.append(picture)
+            # Add pictures
+            for picture in auction.pictures:
+                blur_hash = generate_blurhash(picture.image_url)
+                db_picture = AuctionImage(
+                    image_url=picture.image_url,
+                    blur_hash=blur_hash
+                )
+                db_auction.pictures.append(db_picture)
+            
+            self.db_session.add(db_auction)
+            self.db_session.commit()
+            self.db_session.refresh(db_auction)
+            return db_auction
+        except Exception as e:
+            self.db_session.rollback()
+            raise e
 
-        auction_saved['pictures']=images
-        auction = self.database["auctions"].find_one_and_update(
-            filter={
-                "_id": ObjectId(id),
-            },
-            update={
-                "$set": {
-                    **auction_saved}}
+    def get_auctions(
+        self,
+        offset: int = 0,
+        limit: int = 10,
+        filters: Optional[list] = None
+    ) -> PaginatedResult[AuctionResponse]:
+        try:
+            base_query = select(Auctions).options(
+                joinedload(Auctions.location),
+                joinedload(Auctions.pictures)
             )
-
-        return auction
-
-    def delete_auction(self, id:str)->bool:
-        auction = self.database["auctions"].delete_one(
-            filter={
-                "_id": ObjectId(id),
-            },
+            
+            query, total = get_paginated_query(
+                base_query, 
+                self.db_session, 
+                offset, 
+                limit, 
+                filters
             )
-        return auction.deleted_count >0
-
-
-    def get_auctions(self)-> Optional[List[AuctionResponse]]:
-        auctions = self.database['auctions'].find()
-        return auctions
-
-
-    def get_auctions_by_location(self, coordiantes: List[float])-> Optional[List[AuctionResponse]]:
-        auctions =  self.database['auctions'].find({
-            "location":{ "$geoWithin": { "$center": [ coordiantes, 5 ] } }})
-        return auctions
+            
+            results = self.db_session.execute(query).unique().scalars().all()
+            return PaginatedResult(
+                items=results,
+                total=total,
+                offset=offset,
+                limit=limit
+            )
+        except Exception as e:
+            self.db_session.rollback()
+            raise e

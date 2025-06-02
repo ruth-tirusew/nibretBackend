@@ -9,18 +9,9 @@ from sqlalchemy.orm import relationship, sessionmaker
 
 from app.auth.schema import User
 from app.database import Base
+from app.commons.schema import *
 from app.properties.utils.enums import PropertyType, OwnerType
 
-
-class TranslateModel(Base):
-    __abstract__ = True
-    
-    name = Column(String)
-    tr_name = Column(String, nullable=True)
-    description = Column(Text)
-    tr_description = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 class HomeOwners(TranslateModel):
     __tablename__ = 'home_owners'
@@ -30,38 +21,6 @@ class HomeOwners(TranslateModel):
     
     properties = relationship("Property", back_populates="owner")
 
-class Location(TranslateModel):
-    __tablename__ = 'locations'
-    
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    longitude = Column(DECIMAL(precision=25, scale=20))
-    latitude = Column(DECIMAL(precision=25, scale=20))
-    
-    property = relationship("Property", back_populates="location", uselist=False)
-
-    @staticmethod
-    def calculate_distance(lat1, lon1, lat2, lon2):
-        R = 6371  # Earth radius in km
-        lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
-
-        dlat = lat2 - lat1
-        dlon = lon2 - lon1
-        a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-        c = 2 * atan2(sqrt(a), sqrt(1-a))
-        return R * c
-
-    @classmethod
-    def find_nearby_places(cls, session, latitude, longitude, radius_km):
-        places = session.query(cls).all()
-        return [
-            place for place in places
-            if cls.calculate_distance(
-                latitude,
-                longitude,
-                float(place.latitude),
-                float(place.longitude)
-            ) <= radius_km
-        ]
 
 class Property(TranslateModel):
     __tablename__ = 'properties'

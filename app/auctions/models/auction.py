@@ -3,18 +3,7 @@ from typing import Optional, List,Annotated
 from datetime import datetime
 
 from app.auctions.utils.enums import StatusEnum
-
-
-
-PyObjectId = Annotated[str, BeforeValidator(str)]
-
-class LocationBase(BaseModel):
-    name: str
-    type: Optional[str]="Point"
-    coordinates: List[float]
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-
+from app.commons.models import LocationBase
 
 class ImageBase(BaseModel):
     is_cover: bool = False
@@ -38,11 +27,11 @@ class AuctionBase(BaseModel):
 
 
 class Auction(AuctionBase):
+    id: Optional[UUID4]
     ...
 
 class AuctionResponse(AuctionBase):
-    id: Optional[PyObjectId] = Field(alias="_id", default=None)
-
+    id: UUID4
 
 class ImageResponse(ImageBase):
     auction: AuctionBase

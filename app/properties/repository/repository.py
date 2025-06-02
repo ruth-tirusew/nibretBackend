@@ -1,16 +1,54 @@
 from datetime import datetime
-from typing import List, Optional, Dict
-from uuid import UUID
-from sqlalchemy import func, text, or_, and_, case, extract
+from fastapi import Request
+from sqlalchemy import func, text, or_, and_, case, extract, select
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import SQLAlchemyError
+from typing import List, Optional, Dict,Any
+from uuid import UUID
 
-from app.properties.schema import Property, Location, Image, Location, HomeOwners
-from app.properties.models import PropertyDBCreate, Image as ImageRequest, LocationBase, HomeOwnerRequest, HomeOwnerResponse
+from app.commons.models import LocationBase
+from app.commons.schema import  *
+from app.commons.utils.pagination_result import PaginatedResult
+from app.commons.utils import get_paginated_query
+from app.properties.utils.enums import *
+from app.properties.schema import Property, Image, HomeOwners
+from app.properties.models import PropertyDBCreate, Image as ImageRequest, HomeOwnerRequest, HomeOwnerResponse
 
 class PropertyRepository:
     def __init__(self, db: Session):
         self.db = db
+
+    def _build_filters(self, filters: Dict[str, Any]) -> List:
+        """Convert API filters to SQLAlchemy filter conditions"""
+        filter_conditions = []
+        
+        if filters.get("search"):
+            filter_conditions.append(
+                or_(
+                    Property.title.ilike(f"%{filters['search']}%"),
+                    Property.description.ilike(f"%{filters['search']}%")
+                )
+            )
+        
+        if filters.get("type"):
+            filter_conditions.append(Property.type.in_(filters["type"]))
+            
+        if filters.get("min_price"):
+            filter_conditions.append(Property.price >= filters["min_price"])
+            
+        if filters.get("max_price"):
+            filter_conditions.append(Property.price <= filters["max_price"])
+            
+        if filters.get("bedroom"):
+            filter_conditions.append(Property.bedroom_count == filters["bedroom"])
+            
+        if filters.get("bathroom"):
+            filter_conditions.append(Property.bathroom_count == filters["bathroom"])
+            
+        if filters.get("status"):
+            filter_conditions.append(Property.status == filters["status"])
+            
+        return filter_conditions
 
     def create_property_owners(self, owners_data: HomeOwnerRequest)->Optional[HomeOwnerResponse]:
         try:
@@ -41,7 +79,7 @@ class PropertyRepository:
 
     def get_property_owner(self, property_owner_id: UUID) -> Optional[HomeOwnerResponse]:
         return self.db.query(HomeOwners)\
-            .filter(Property.id == property_id)\
+            .filter(HomeOwners.id == property_owner_id)\
             .first()
     def delete_property_owner(self, property_owner_id: UUID) -> bool:
         try:
@@ -55,8 +93,8 @@ class PropertyRepository:
             self.db.rollback()
             raise e
 
-    def get_property_owners(self) -> List[Property]:
-        return self.db.query(Property).order_by(Property.created_at.desc()).all()
+    def get_property_owners(self) -> List[HomeOwners]:
+        return self.db.query(HomeOwners).order_by(HomeOwners.created_at.desc()).all()
 
     def create_property(self, property_data: PropertyDBCreate, user_id: UUID) -> Property:
         try:
@@ -108,8 +146,35 @@ class PropertyRepository:
             self.db.rollback()
             raise e
 
-    def get_properties(self) -> List[Property]:
-        return self.db.query(Property).order_by(Property.created_at.desc()).all()
+    def get_properties( 
+        self,
+        request: Request,
+        offset: int = 0,
+        limit: int = 10,
+        filters: Optional[list] = None) -> PaginatedResult:
+        base_query = select(Property).options(
+                joinedload(Property.location),
+                joinedload(Property.pictures)
+            )
+        filter_conditions = self._build_filters(filters or {})
+            
+        query, total = get_paginated_query(
+                base_query, 
+                self.db, 
+                offset, 
+                limit, 
+                filter_conditions
+            )
+            
+        results = self.db.execute(query).unique().scalars().all()
+        return PaginatedResult(
+                items=results,
+                total=total,
+                offset=offset,
+                limit=limit,
+                request=request,
+                route_name="fetch_properties"
+            )
 
     def update_property(self, property_id: UUID, property_data: PropertyDBCreate) -> Optional[Property]:
         try:
@@ -126,6 +191,41 @@ class PropertyRepository:
         except SQLAlchemyError as e:
             self.db.rollback()
             raise e
+
+    def get_premium_properties(
+        self,
+        request: Request,
+        offset: int = 0,
+        limit: int = 10,
+        filters: Optional[list] = None
+    ):
+        base_query = select(Property).options(
+            joinedload(Property.location),
+            joinedload(Property.pictures)
+        ).join(Location).join(HomeOwners)
+
+        base_query = base_query.filter(
+            HomeOwners.type == OwnerType.PREMIUM.value
+        )
+        query, total = get_paginated_query(
+                base_query, 
+                self.db, 
+                offset, 
+                limit, 
+                filters
+            )
+            
+        results = self.db.execute(query).unique().scalars().all()
+        
+        return PaginatedResult(
+                items=results,
+                total=total,
+                offset=offset,
+                limit=limit,
+                request=request,
+                route_name="get_premium_property"
+            )
+
 
     def search_properties(self, filters: Dict) -> List[Property]:
         query = self.db.query(Property).options(
@@ -195,11 +295,6 @@ class PropertyRepository:
             query = query.order_by(Property.price.desc())
         else:
             query = query.order_by(Property.created_at.desc())
-
-        if 'page' in filters and 'per_page' in filters:
-            page = filters['page']
-            per_page = filters['per_page']
-            query = query.offset((page - 1) * per_page).limit(per_page)
 
         return query.all()
 

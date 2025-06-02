@@ -1,20 +1,33 @@
-from fastapi import Depends
-
-from typing import List, Dict, Optional
-from uuid import UUID
+from fastapi import Depends, Request
 from sqlalchemy.orm import Session
+from typing import List, Dict, Optional,Any
+from uuid import UUID
 
+from app.commons.models import LocationBase
 from app.database import get_db
-from app.properties.models import Property, Image, PropertyCreate,PropertyDBCreate, LocationBase, HomeOwnerRequest, HomeOwnerResponse
+from app.properties.models import Property, Image, PropertyCreate,PropertyDBCreate, HomeOwnerRequest, HomeOwnerResponse
 from app.properties.repository.repository import PropertyRepository
-from app.properties.utils.blurhash import generate_blurhash
+from app.properties.utils.errors import OWNER_DOES_NOT_EXIST
+from app.commons.utils import generate_blurhash
 
 class PropertyService:
     def __init__(self, db: Session):
         self.repository = PropertyRepository(db)
 
+    def get_properties(
+        self, 
+        request: Request,
+        offset: int = 0,
+        limit: int = 10,
+        filters: Optional[Dict[str, Any]] = None
+    ):
+        return self.repository.get_properties(offset=offset, limit=limit, request=request).to_dict()
+
     def create_property(self, property_data: PropertyCreate, user_id: UUID) -> Property:
         """Create new property with generated blurhashes for images"""
+        owner = self.repository.get_property_owner(property_owner_id=property_data.owner_id)
+        if not owner:
+            raise OWNER_DOES_NOT_EXIST
         property_data_dict = property_data.dict()
         image_data_dict = self._process_images(property_data_dict)
         location = self.repository.create_location(location_data=LocationBase(**property_data.location.dict()))
@@ -73,13 +86,16 @@ class PropertyService:
             raise ValueError("Rental properties cannot be marked as sold")
         return self.repository.toggle_sold_status(property_id)
 
-    def get_premium_properties(self) -> List[Property]:
+    def get_premium_properties(self,
+        request: Request,
+        offset: int = 0,
+        limit: int = 10,
+        filters: Optional[list] = None) -> List[Property]:
         """Get premium properties with business logic definition"""
-        return self.repository.search_properties({
-            'type': ['Luxury Apartment', 'Penthouse', 'Villa'],
-            'sort_by': 'price_desc'
-        })
+        return self.repository.get_premium_properties(offset=offset, limit=limit, request=request).to_dict()
 
+    def get_monthly_property_data(self):
+        return self.repository.get_monthly_property_data()
     def get_property_stats(self) -> Dict:
         """Get property statistics with formatted output"""
         raw_stats = self.repository.get_property_stats()
@@ -125,6 +141,7 @@ class PropertyService:
     
     def get_all_property_owners(self) -> Optional[HomeOwnerResponse]:
         """Get all property owners"""
+        
         property_owner = self.repository.get_property_owners()
         return property_owner
 

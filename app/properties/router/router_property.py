@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status, Body, Query
+from fastapi import Depends, HTTPException, status, Body, Query, Request
 from fastapi.security import OAuth2PasswordBearer
 
 from uuid import UUID
@@ -18,17 +18,9 @@ async def register_property(
     service: PropertyService = Depends(get_property_service),
     auth_service = Depends(get_service)
 ):
-    try:
-        current_user = await auth_service.get_current_user(token)
-        return service.create_property(property_data, current_user["id"])
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        print(e)
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to create property"
-        )
+    current_user = await auth_service.get_current_user(token)
+    return service.create_property(property_data, current_user["id"])
+    
 
 @router.put("/{property_id}", status_code=status.HTTP_200_OK, response_model=PropertyResponse)
 async def update_property(
@@ -61,8 +53,20 @@ async def delete_property(
             detail="Failed to delete property"
         )
 
-@router.get("", status_code=status.HTTP_200_OK, response_model=List[PropertyResponse])
+@router.get("/premium", status_code=status.HTTP_200_OK)
+def get_premium_property(
+    request: Request,
+    limit:Optional[int]=Query(10),
+    offset:Optional[int]=Query(0),
+    service: PropertyService = Depends(get_property_service),
+):
+    return service.get_premium_properties(offset=offset, limit=limit, request=request)
+
+@router.get("", status_code=status.HTTP_200_OK)
 async def fetch_properties(
+    request: Request,
+    limit:Optional[int]=Query(10),
+    offset:Optional[int]=Query(0),
     search: Optional[str] = Query(None),
     type: Optional[List[str]] = Query(None),
     min_price: Optional[float] = Query(None),
@@ -81,7 +85,7 @@ async def fetch_properties(
         "bathroom": bathroom,
         "status": status
     }
-    return service.search_properties(filters)
+    return service.get_properties(limit=limit, offset=offset, request=request, filters={k: v for k, v in filters.items() if v is not None})
 
 @router.get("/{property_id}", status_code=status.HTTP_200_OK, response_model=PropertyResponse)
 async def fetch_property(

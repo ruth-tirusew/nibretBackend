@@ -1,6 +1,7 @@
 import importlib
 import pkgutil
 from datetime import datetime
+import traceback
 from typing import Any, Callable, Optional
 from zoneinfo import ZoneInfo
 
@@ -43,4 +44,5 @@ def import_routers(package_name):
         try:
             importlib.import_module(module_name)
         except Exception as e:
+            print(traceback.format_exc())
             print(f"Failed to import {module_name}, error: {e}")
